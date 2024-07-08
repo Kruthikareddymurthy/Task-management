@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Task Manager</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+    }
+    h1 {
+        color: #5D5C61;
+    }
+    form, .filters {
+        background: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    input[type="text"], select, .filters input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        display: inline-block;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    button, .button-icon {
+        width: auto;
+        background-color: #4CAF50;
+        color: white;
+        padding: 7px 10px;
+        margin: 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        display: inline-block;
+    }
+    .button-icon {
+        background: none;
+        color: #4CAF50;
+    }
+    .button-icon:hover, button:hover {
+        color: #45a049;
+        background-color: #45a049;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    li {
+        margin: 8px 0;
+        background: #fff;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+</style>
+</head>
+<body>
+<h1>Task Manager</h1>
+<form id="newTaskForm">
+    <input type="text" id="description" placeholder="Task Description" required>
+    <label for="dueDate">Due Date:</label>
+    <input type="date" id="dueDate" name="dueDate">
+    <br><br>
+    <label for="priority">Priority:</label>
+    <select id="priority">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+    </select>
+    <br><br>
+    <label for="status">Status:</label>
+    <select id="status">
+        <option value="To Do">To Do</option>
+        <option value="Started">Started</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+    </select>
+    <button type="submit"><i class="fas fa-plus-circle"></i> Add Task</button>
+</form>
+
+<div class="filters">
+    <h2>Filter Tasks</h2>
+    <label><input type="checkbox" value="Low"> Low</label>
+    <label><input type="checkbox" value="Medium"> Medium</label>
+    <label><input type="checkbox" value="High"> High</label>
+    <br><br>
+    <button onclick="filterTasks()"><i class="fas fa-filter"></i> Apply Filters</button>
+</div>
+
+<div class="filters">
+    <h2>Filter Status</h2>
+    <label><input type="checkbox" value="To Do"> To Do</label>
+    <label><input type="checkbox" value="Started"> Started</label>
+    <label><input type="checkbox" value="In Progress"> In Progress</label>
+    <label><input type="checkbox" value="Completed"> Completed</label>
+    <br><br>
+    <button onclick="filterStatus()"><i class="fas fa-filter"></i> Apply Filters</button>
+</div>
+
+<ul id="taskList"></ul>
+
+<script>
+document.getElementById('newTaskForm').onsubmit = async function(event) {
+    event.preventDefault();
+    const description = document.getElementById('description').value;
+    const priority = document.getElementById('priority').value;
+    const dueDate = document.getElementById('dueDate').value;
+    const status = document.getElementById('status').value;
+
+    const response = await fetch('/tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            description: description,
+            priority: priority,
+            dueDate: dueDate,
+            status: status
+        })
+    });
+    if (response.ok) {
+        console.log('Added Task:', await response.json());
+        loadTasks(); // Reload the list
+    } else {
+        console.error('Failed to add task:', await response.text());
+    }
+};
+
+async function loadTasks() {
+    const response = await fetch('/tasks');
+    if (response.ok) {
+        const tasks = await response.json();
+        const list = document.getElementById('taskList');
+        list.innerHTML = ''; // Clear current tasks
+        tasks.forEach(task => {
+            const item = document.createElement('li');
+            const dueDateString = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date";
+            item.textContent = `${task.description} [${task.priority}] [${task.status}] ${dueDateString}`;
+
+            // Update Button
+            const updateButton = document.createElement('button');
+            updateButton.textContent = 'Update';
+            updateButton.className = 'button-icon';
+            updateButton.onclick = () => updateTask(task._id);
+            item.appendChild(updateButton);
+
+            // Delete Button
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.className = 'button-icon';
+            deleteButton.onclick = () => deleteTask(task._id);
+            item.appendChild(deleteButton);
+
+            list.appendChild(item);
+        });
+    }
+}
+
+async function updateTask(id) {
+    // Mock-up: Prompt user for new description, priority, and status, replace with appropriate UI in production
+    const newDescription = prompt("New description:");
+    const newPriority = prompt("New priority (Low, Medium, High):");
+    const newStatus = prompt("New status (To Do, Started, In Progress, Completed):");
+    const response = await fetch(`/tasks/${id}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            description: newDescription,
+            priority: newPriority,
+            status: newStatus
+        })
+    });
+    if (response.ok) {
+        console.log('Updated Task:', await response.json());
+        loadTasks();
+    }
+}
+
+async function deleteTask(id) {
+    const response = await fetch(`/tasks/${id}`, { method: 'DELETE' });
+    if (response.ok) {
+        console.log('Deleted Task:', await response.json());
+        loadTasks(); // Reload the list
+    } else {
+        console.error('Failed to delete task:', await response.text());
+    }
+}
+
+function filterTasks() {
+    const filters = document.querySelectorAll('.filters input[type="checkbox"]:checked');
+    const priorities = Array.from(filters).map(input => input.value);
+
+    const tasks = document.querySelectorAll('#taskList li');
+    tasks.forEach(task => {
+        const taskPriority = task.textContent.match(/\[(Low|Medium|High)\]/)[1];
+        task.style.display = priorities.includes(taskPriority) ? '' : 'none';
+    });
+}
+
+function filterStatus() {
+    const filters = document.querySelectorAll('.filters input[type="checkbox"]:checked');
+    const statuses = Array.from(filters).map(input => input.value);
+
+    const tasks = document.querySelectorAll('#taskList li');
+    tasks.forEach(task => {
+        const taskStatus = task.textContent.match(/\[(To Do|Started|In Progress|Completed)\]/)[1];
+        task.style.display = statuses.includes(taskStatus) ? '' : 'none';
+    });
+}
+
+loadTasks();
+</script>
+</body>
+</html>
